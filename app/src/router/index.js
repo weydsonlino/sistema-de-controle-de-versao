@@ -33,6 +33,11 @@ const router = createRouter({
       component: () => import("../pages/RepoFormView.vue"),
     },
     {
+      path: "/repos/:id/arquivo",
+      name: "file-editor",
+      component: () => import("../pages/FileEditorView.vue"),
+    },
+    {
       path: "/repositorio",
       name: "repositorio",
       component: () => import("../views/RepositorioView.vue"),
