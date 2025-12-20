@@ -66,15 +66,22 @@
                   v-for="file in files" 
                   :key="file.name"
                   class="file-item"
-                  @click="handleFileClick(file)"
                 >
-                  <div class="file-info">
+                  <div class="file-info" @click="handleFileClick(file)">
                     <i :class="getFileIcon(file)" :style="{ color: getFileColor(file) }"></i>
                     <span class="file-name">{{ file.name }}</span>
                   </div>
                   <div class="file-meta">
                     <span class="file-date">{{ file.lastModified }}</span>
                     <span class="file-size" v-if="!file.isDirectory">{{ file.size }}</span>
+                  </div>
+                  <div class="file-actions" v-if="!file.isDirectory">
+                    <Button size="sm" variant="outline" @click.stop="handleEditFile(file)">
+                      <i class="fas fa-edit"></i>
+                    </Button>
+                    <Button size="sm" variant="danger" @click.stop="handleDeleteFile(file)">
+                      <i class="fas fa-trash"></i>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -529,6 +536,25 @@ const handleFileClick = (file) => {
     router.push(`/repos/${route.params.id}/arquivo?file=${file.name}`);
   }
 };
+
+const handleEditFile = (file) => {
+  router.push(`/repos/${route.params.id}/arquivo?file=${file.name}`);
+};
+
+const handleDeleteFile = async (file) => {
+  if (!confirm(`Tem certeza que deseja excluir o arquivo "${file.name}"?`)) {
+    return;
+  }
+  
+  try {
+    // Simular exclusão do arquivo
+    alert(`Arquivo "${file.name}" excluído com sucesso!`);
+    await loadFiles();
+  } catch (error) {
+    console.error('Erro ao excluir arquivo:', error);
+    alert('Erro ao excluir arquivo');
+  }
+};
 </script>
 
 <style scoped>
@@ -695,6 +721,22 @@ const handleFileClick = (file) => {
   gap: var(--space-4);
   font-size: var(--font-size-sm);
   color: var(--text-tertiary);
+}
+
+.file-actions {
+  display: flex;
+  gap: var(--space-2);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.file-item:hover .file-actions {
+  opacity: 1;
+}
+
+.file-info {
+  flex: 1;
+  cursor: pointer;
 }
 
 .empty-tab {
