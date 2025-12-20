@@ -41,14 +41,48 @@
         <!-- Tabs -->
         <TabPanel
           :tabs="[
+            { label: 'Arquivos', icon: 'fas fa-folder-tree' },
             { label: 'Commits', icon: 'fas fa-code-commit' },
             { label: 'Branches', icon: 'fas fa-code-branch' },
             { label: 'Tags', icon: 'fas fa-tag' }
           ]"
           @tab-change="handleTabChange"
         >
-          <!-- Tab 0: Commits -->
+          <!-- Tab 0: Arquivos -->
           <template #tab-0>
+            <div v-if="loadingFiles" style="padding: var(--space-8);">
+              <LoadingSpinner message="Carregando arquivos..." />
+            </div>
+            <div v-else class="files-container">
+              <div class="files-toolbar">
+                <div class="current-path">
+                  <i class="fas fa-folder"></i>
+                  <span>{{ currentPath || '/' }}</span>
+                </div>
+              </div>
+              
+              <div class="files-list">
+                <div 
+                  v-for="file in files" 
+                  :key="file.name"
+                  class="file-item"
+                  @click="handleFileClick(file)"
+                >
+                  <div class="file-info">
+                    <i :class="getFileIcon(file)" :style="{ color: getFileColor(file) }"></i>
+                    <span class="file-name">{{ file.name }}</span>
+                  </div>
+                  <div class="file-meta">
+                    <span class="file-date">{{ file.lastModified }}</span>
+                    <span class="file-size" v-if="!file.isDirectory">{{ file.size }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+          
+          <!-- Tab 1: Commits -->
+          <template #tab-1>
             <div v-if="loadingCommits" style="padding: var(--space-8);">
               <LoadingSpinner message="Carregando commits..." />
             </div>
@@ -76,8 +110,8 @@
             </div>
           </template>
           
-          <!-- Tab 1: Branches -->
-          <template #tab-1>
+          <!-- Tab 2: Branches -->
+          <template #tab-2>
             <div style="margin-bottom: var(--space-6);">
               <Button variant="primary" @click="showBranchModal = true">
                 <i class="fas fa-plus"></i>
@@ -139,8 +173,8 @@
             </div>
           </template>
           
-          <!-- Tab 2: Tags -->
-          <template #tab-2>
+          <!-- Tab 3: Tags -->
+          <template #tab-3>
             <div style="margin-bottom: var(--space-6);">
               <Button variant="primary" @click="showTagModal = true">
                 <i class="fas fa-plus"></i>
@@ -254,10 +288,13 @@ const route = useRoute();
 const router = useRouter();
 
 const loading = ref(true);
+const loadingFiles = ref(false);
 const loadingCommits = ref(false);
 const loadingBranches = ref(false);
 const loadingTags = ref(false);
 const repo = ref(null);
+const files = ref([]);
+const currentPath = ref('');
 const commits = ref([]);
 const branches = ref([]);
 const tags = ref([]);
@@ -326,9 +363,11 @@ const loadTags = async () => {
 };
 
 const handleTabChange = (index) => {
-  if (index === 1 && branches.value.length === 0) {
+  if (index === 0 && files.value.length === 0) {
+    loadFiles();
+  } else if (index === 2 && branches.value.length === 0) {
     loadBranches();
-  } else if (index === 2 && tags.value.length === 0) {
+  } else if (index === 3 && tags.value.length === 0) {
     loadTags();
   }
 };
@@ -447,6 +486,49 @@ const handleDeleteTag = async (tagName) => {
     alert(error.message);
   }
 };
+
+// Funções para gerenciar arquivos
+const loadFiles = async () => {
+  loadingFiles.value = true;
+  try {
+    files.value = [
+      { name: 'README.md', isDirectory: false, size: '2.5 KB', lastModified: '2024-12-19' },
+      { name: 'package.json', isDirectory: false, size: '1.2 KB', lastModified: '2024-12-18' },
+      { name: 'src', isDirectory: true, size: '-', lastModified: '2024-12-20' },
+      { name: 'public', isDirectory: true, size: '-', lastModified: '2024-12-15' },
+      { name: '.gitignore', isDirectory: false, size: '245 B', lastModified: '2024-12-10' },
+      { name: 'index.html', isDirectory: false, size: '850 B', lastModified: '2024-12-19' }
+    ];
+  } finally {
+    loadingFiles.value = false;
+  }
+};
+
+const getFileIcon = (file) => {
+  if (file.isDirectory) return 'fas fa-folder';
+  const ext = file.name.split('.').pop().toLowerCase();
+  const icons = {
+    'md': 'fas fa-file-alt', 'js': 'fab fa-js-square', 'json': 'fas fa-file-code',
+    'css': 'fab fa-css3-alt', 'html': 'fab fa-html5', 'vue': 'fab fa-vuejs'
+  };
+  return icons[ext] || 'fas fa-file';
+};
+
+const getFileColor = (file) => {
+  if (file.isDirectory) return 'var(--color-warning)';
+  const ext = file.name.split('.').pop().toLowerCase();
+  const colors = {
+    'js': 'var(--color-warning)', 'json': 'var(--color-success)',
+    'css': 'var(--color-primary-500)', 'vue': 'var(--color-success)'
+  };
+  return colors[ext] || 'var(--text-secondary)';
+};
+
+const handleFileClick = (file) => {
+  if (!file.isDirectory) {
+    router.push(`/repos/${route.params.id}/arquivo?file=${file.name}`);
+  }
+};
 </script>
 
 <style scoped>
@@ -545,6 +627,74 @@ const handleDeleteTag = async (tagName) => {
 .tag-card:hover {
   border-color: var(--border-medium);
   box-shadow: var(--shadow-md);
+}
+
+/* Files Browser */
+.files-container {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.files-toolbar {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  background-color: var(--bg-elevated);
+}
+
+.current-path {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.files-list {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.file-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.file-item:hover {
+  background-color: var(--bg-elevated);
+}
+
+.file-item:last-child {
+  border-bottom: none;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.file-info i {
+  font-size: 1.25rem;
+}
+
+.file-name {
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.file-meta {
+  display: flex;
+  gap: var(--space-4);
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
 }
 
 .empty-tab {
