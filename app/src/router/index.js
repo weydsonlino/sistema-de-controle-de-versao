@@ -18,9 +18,19 @@ const router = createRouter({
       component: () => import("../pages/RepoListView.vue"),
     },
     {
+      path: "/repos/novo",
+      name: "repo-create",
+      component: () => import("../pages/RepoFormView.vue"),
+    },
+    {
       path: "/repos/:id",
       name: "repo-detail",
       component: () => import("../pages/RepoDetailView.vue"),
+    },
+    {
+      path: "/repos/:id/editar",
+      name: "repo-edit",
+      component: () => import("../pages/RepoFormView.vue"),
     },
     {
       path: "/repositorio",
