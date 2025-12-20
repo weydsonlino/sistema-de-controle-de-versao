@@ -112,11 +112,19 @@ const handleLogin = async () => {
     // Simular login (em produção, chamaria uma API real)
     await new Promise(resolve => setTimeout(resolve, 1000));
     
+    // Extrair nome do email
+    const emailPart = credentials.value.email.split('@')[0];
+    // Converter "joao.silva" em "Joao Silva"
+    const nameParts = emailPart.split(/[._-]/).map(part => 
+      part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+    );
+    const fullName = nameParts.join(' ');
+    
     // Salvar dados do usuário no localStorage
     const userData = {
-      nome: 'João Silva',
+      nome: fullName,
       email: credentials.value.email,
-      avatar: 'https://ui-avatars.com/api/?name=Joao+Silva&background=643bf6&color=fff'
+      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=643bf6&color=fff`
     };
     
     localStorage.setItem('user_data', JSON.stringify(userData));
