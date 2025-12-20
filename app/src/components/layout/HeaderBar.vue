@@ -96,18 +96,14 @@ const handleLogout = () => {
     // Limpar dados do localStorage
     localStorage.removeItem('user_theme');
     localStorage.removeItem('user_preferences');
+    localStorage.removeItem('user_data');
+    localStorage.removeItem('remember_me');
     
     // Fechar menu
     showUserMenu.value = false;
     
-    // Mostrar mensagem e recarregar (simulando logout)
-    alert('Você saiu com sucesso! Em um sistema real, você seria redirecionado para a tela de login.');
-    
-    // Em produção, você redirecionaria para login:
-    // router.push('/login');
-    
-    // Por enquanto, apenas recarrega a página
-    window.location.reload();
+    // Redirecionar para login
+    router.push('/login');
   }
 };
 
