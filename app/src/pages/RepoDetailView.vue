@@ -1,0 +1,714 @@
+<template>
+  <div class="repo-detail-container">
+    <HeaderBar />
+    
+    <main class="container" style="padding-top: var(--space-8); padding-bottom: var(--space-8);">
+      <LoadingSpinner v-if="loading" message="Carregando repositório..." />
+      
+      <div v-else-if="repo">
+        <!-- Header -->
+        <div class="repo-header">
+          <div>
+            <div style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2);">
+              <i class="fas fa-folder-open" style="font-size: 2rem; color: var(--color-warning);"></i>
+              <h1 style="margin: 0;">{{ repo.nome }}</h1>
+              <span class="badge" :class="repo.visibilidade === 'publico' ? 'badge-success' : 'badge-primary'">
+                {{ repo.visibilidade }}
+              </span>
+            </div>
+            <p style="color: var(--text-secondary); margin: 0;">
+              {{ repo.descricao || 'Sem descrição' }}
+            </p>
+            <div style="display: flex; gap: var(--space-6); margin-top: var(--space-4); font-size: var(--font-size-sm); color: var(--text-secondary);">
+              <span><i class="fas fa-user"></i> {{ repo.dono }}</span>
+              <span><i class="fas fa-calendar"></i> Criado em {{ repo.dataCriacao }}</span>
+              <span><i class="fas fa-clock"></i> Último commit: {{ repo.ultimoCommit }}</span>
+            </div>
+          </div>
+          
+          <div style="display: flex; gap: var(--space-3);">
+            <Button variant="outline" @click="handleClone">
+              <i class="fas fa-clone"></i>
+              Clonar
+            </Button>
+            <Button variant="outline" @click="$router.push(`/repos/${repo.id}/editar`)">
+              <i class="fas fa-edit"></i>
+              Editar
+            </Button>
+          </div>
+        </div>
+        
+        <!-- Tabs -->
+        <TabPanel
+          :tabs="[
+            { label: 'Commits', icon: 'fas fa-code-commit' },
+            { label: 'Branches', icon: 'fas fa-code-branch' },
+            { label: 'Tags', icon: 'fas fa-tag' }
+          ]"
+          @tab-change="handleTabChange"
+        >
+          <!-- Tab 0: Commits -->
+          <template #tab-0>
+            <div v-if="loadingCommits" style="padding: var(--space-8);">
+              <LoadingSpinner message="Carregando commits..." />
+            </div>
+            <div v-else-if="commits.length > 0">
+              <div v-for="commit in commits" :key="commit.hash" class="commit-item">
+                <div class="commit-header">
+                  <code class="commit-hash">{{ commit.hash }}</code>
+                  <span class="commit-date">{{ commit.data }}</span>
+                </div>
+                <div class="commit-message">{{ commit.mensagem }}</div>
+                <div class="commit-meta">
+                  <span><i class="fas fa-user"></i> {{ commit.autor }}</span>
+                  <span><i class="fas fa-file"></i> {{ commit.arquivosAlterados }} arquivos alterados</span>
+                </div>
+                <div class="commit-actions">
+                  <Button size="sm" variant="outline" @click="handleRevert(commit.hash)">
+                    <i class="fas fa-undo"></i>
+                    Reverter
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <div v-else class="empty-tab">
+              <p>Nenhum commit encontrado</p>
+            </div>
+          </template>
+          
+          <!-- Tab 1: Branches -->
+          <template #tab-1>
+            <div style="margin-bottom: var(--space-6);">
+              <Button variant="primary" @click="showBranchModal = true">
+                <i class="fas fa-plus"></i>
+                Criar Branch
+              </Button>
+            </div>
+            
+            <div v-if="loadingBranches" style="padding: var(--space-8);">
+              <LoadingSpinner message="Carregando branches..." />
+            </div>
+            <div v-else-if="branches.length > 0" class="table-container">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Último Commit</th>
+                    <th>Autor</th>
+                    <th>Hash</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="branch in branches" :key="branch.nome">
+                    <td>
+                      <strong>{{ branch.nome }}</strong>
+                      <span v-if="branch.nome === 'main'" class="badge badge-primary" style="margin-left: var(--space-2);">
+                        principal
+                      </span>
+                    </td>
+                    <td>{{ branch.ultimoCommit }}</td>
+                    <td>{{ branch.autor }}</td>
+                    <td><code>{{ branch.hash }}</code></td>
+                    <td>
+                      <div style="display: flex; gap: var(--space-2);">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          @click="handleMerge(branch.nome)"
+                          :disabled="branch.nome === 'main'"
+                        >
+                          <i class="fas fa-code-merge"></i>
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="danger" 
+                          @click="handleDeleteBranch(branch.nome)"
+                          :disabled="branch.nome === 'main'"
+                        >
+                          <i class="fas fa-trash"></i>
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div v-else class="empty-tab">
+              <p>Nenhuma branch encontrada</p>
+            </div>
+          </template>
+          
+          <!-- Tab 2: Tags -->
+          <template #tab-2>
+            <div style="margin-bottom: var(--space-6);">
+              <Button variant="primary" @click="showTagModal = true">
+                <i class="fas fa-plus"></i>
+                Criar Tag
+              </Button>
+            </div>
+            
+            <div v-if="loadingTags" style="padding: var(--space-8);">
+              <LoadingSpinner message="Carregando tags..." />
+            </div>
+            <div v-else-if="tags.length > 0" class="tags-grid">
+              <div v-for="tag in tags" :key="tag.nome" class="tag-card">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                  <div>
+                    <h4 style="margin: 0 0 var(--space-2) 0; color: var(--text-primary);">
+                      <i class="fas fa-tag" style="color: var(--color-success);"></i>
+                      {{ tag.nome }}
+                    </h4>
+                    <p style="font-size: var(--font-size-sm); color: var(--text-secondary); margin: 0;">
+                      Commit: <code>{{ tag.commitHash }}</code>
+                    </p>
+                    <p style="font-size: var(--font-size-sm); color: var(--text-tertiary); margin: var(--space-1) 0 0 0;">
+                      {{ tag.autor }} • {{ tag.data }}
+                    </p>
+                  </div>
+                  <Button size="sm" variant="danger" @click="handleDeleteTag(tag.nome)">
+                    <i class="fas fa-trash"></i>
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <div v-else class="empty-tab">
+              <p>Nenhuma tag encontrada</p>
+            </div>
+          </template>
+        </TabPanel>
+      </div>
+      
+      <div v-else class="empty-state">
+        <i class="fas fa-folder-open" style="font-size: 4rem; color: var(--text-tertiary);"></i>
+        <h3>Repositório não encontrado</h3>
+        <Button variant="primary" @click="$router.push('/repos')">
+          Voltar para Repositórios
+        </Button>
+      </div>
+    </main>
+    
+    <!-- Create Branch Modal -->
+    <Modal v-model="showBranchModal" title="Criar Nova Branch" width="500px">
+      <FormField
+        v-model="newBranch.nome"
+        label="Nome da Branch"
+        placeholder="feature/nova-funcionalidade"
+        required
+        :error="branchErrors.nome"
+      />
+      
+      <template #footer>
+        <Button variant="outline" @click="showBranchModal = false">
+          Cancelar
+        </Button>
+        <Button variant="primary" :loading="creatingBranch" @click="handleCreateBranch">
+          Criar Branch
+        </Button>
+      </template>
+    </Modal>
+    
+    <!-- Create Tag Modal -->
+    <Modal v-model="showTagModal" title="Criar Nova Tag" width="500px">
+      <FormField
+        v-model="newTag.nome"
+        label="Nome da Tag"
+        placeholder="v1.0.0"
+        required
+        :error="tagErrors.nome"
+      />
+      
+      <FormField
+        v-model="newTag.commitHash"
+        label="Hash do Commit"
+        placeholder="a1b2c3d (deixe vazio para usar HEAD)"
+      />
+      
+      <template #footer>
+        <Button variant="outline" @click="showTagModal = false">
+          Cancelar
+        </Button>
+        <Button variant="primary" :loading="creatingTag" @click="handleCreateTag">
+          Criar Tag
+        </Button>
+      </template>
+    </Modal>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import HeaderBar from '../components/layout/HeaderBar.vue';
+import Button from '../components/common/Button.vue';
+import TabPanel from '../components/common/TabPanel.vue';
+import Modal from '../components/common/Modal.vue';
+import FormField from '../components/common/FormField.vue';
+import LoadingSpinner from '../components/common/LoadingSpinner.vue';
+import * as RepoService from '../services/RepoService';
+import * as CommitService from '../services/CommitService';
+import * as BranchService from '../services/BranchService';
+import * as TagService from '../services/TagService';
+
+const route = useRoute();
+const router = useRouter();
+
+const loading = ref(true);
+const loadingCommits = ref(false);
+const loadingBranches = ref(false);
+const loadingTags = ref(false);
+const repo = ref(null);
+const commits = ref([]);
+const branches = ref([]);
+const tags = ref([]);
+
+const showBranchModal = ref(false);
+const showTagModal = ref(false);
+const creatingBranch = ref(false);
+const creatingTag = ref(false);
+
+const newBranch = ref({ nome: '' });
+const newTag = ref({ nome: '', commitHash: '' });
+const branchErrors = ref({});
+const tagErrors = ref({});
+
+onMounted(async () => {
+  await loadRepo();
+  await loadCommits();
+});
+
+const loadRepo = async () => {
+  loading.value = true;
+  try {
+    const data = await RepoService.getById(route.params.id);
+    repo.value = data;
+  } catch (error) {
+    console.error('Erro ao carregar repositório:', error);
+  } finally {
+    loading.value = false;
+  }
+};
+
+const loadCommits = async () => {
+  loadingCommits.value = true;
+  try {
+    const data = await CommitService.list(route.params.id);
+    commits.value = data;
+  } catch (error) {
+    console.error('Erro ao carregar commits:', error);
+  } finally {
+    loadingCommits.value = false;
+  }
+};
+
+const loadBranches = async () => {
+  loadingBranches.value = true;
+  try {
+    const data = await BranchService.list(route.params.id);
+    branches.value = data;
+  } catch (error) {
+    console.error('Erro ao carregar branches:', error);
+  } finally {
+    loadingBranches.value = false;
+  }
+};
+
+const loadTags = async () => {
+  loadingTags.value = true;
+  try {
+    const data = await TagService.list(route.params.id);
+    tags.value = data;
+  } catch (error) {
+    console.error('Erro ao carregar tags:', error);
+  } finally {
+    loadingTags.value = false;
+  }
+};
+
+const handleTabChange = (index) => {
+  if (index === 1 && branches.value.length === 0) {
+    loadBranches();
+  } else if (index === 2 && tags.value.length === 0) {
+    loadTags();
+  }
+};
+
+const handleClone = async () => {
+  try {
+    const url = await RepoService.getCloneUrl(route.params.id);
+    await navigator.clipboard.writeText(url);
+    alert(`URL copiada: ${url}`);
+  } catch (error) {
+    console.error('Erro ao copiar URL:', error);
+  }
+};
+
+const handleRevert = async (commitHash) => {
+  if (!confirm('Tem certeza que deseja reverter este commit?')) {
+    return;
+  }
+  
+  try {
+    await CommitService.revert(route.params.id, commitHash);
+    await loadCommits();
+    alert('Commit revertido com sucesso');
+  } catch (error) {
+    console.error('Erro ao reverter commit:', error);
+    alert('Erro ao reverter commit');
+  }
+};
+
+const handleCreateBranch = async () => {
+  branchErrors.value = {};
+  
+  if (!newBranch.value.nome) {
+    branchErrors.value.nome = 'Nome é obrigatório';
+    return;
+  }
+  
+  creatingBranch.value = true;
+  try {
+    await BranchService.create(route.params.id, newBranch.value.nome);
+    showBranchModal.value = false;
+    newBranch.value = { nome: '' };
+    await loadBranches();
+  } catch (error) {
+    console.error('Erro ao criar branch:', error);
+    branchErrors.value.nome = error.message;
+  } finally {
+    creatingBranch.value = false;
+  }
+};
+
+const handleDeleteBranch = async (branchName) => {
+  if (!confirm(`Tem certeza que deseja deletar a branch "${branchName}"?`)) {
+    return;
+  }
+  
+  try {
+    await BranchService.deleteBranch(route.params.id, branchName);
+    await loadBranches();
+  } catch (error) {
+    console.error('Erro ao deletar branch:', error);
+    alert(error.message);
+  }
+};
+
+const handleMerge = async (sourceBranch) => {
+  const targetBranch = prompt('Digite o nome da branch de destino:', 'main');
+  if (!targetBranch) return;
+  
+  try {
+    const result = await BranchService.merge(route.params.id, sourceBranch, targetBranch);
+    if (result.success) {
+      alert(result.message);
+      await loadBranches();
+    } else {
+      alert(`${result.message}\nArquivos com conflito:\n${result.conflicts.join('\n')}`);
+    }
+  } catch (error) {
+    console.error('Erro ao fazer merge:', error);
+    alert(error.message);
+  }
+};
+
+const handleCreateTag = async () => {
+  tagErrors.value = {};
+  
+  if (!newTag.value.nome) {
+    tagErrors.value.nome = 'Nome é obrigatório';
+    return;
+  }
+  
+  creatingTag.value = true;
+  try {
+    await TagService.create(route.params.id, newTag.value.nome, newTag.value.commitHash);
+    showTagModal.value = false;
+    newTag.value = { nome: '', commitHash: '' };
+    await loadTags();
+  } catch (error) {
+    console.error('Erro ao criar tag:', error);
+    tagErrors.value.nome = error.message;
+  } finally {
+    creatingTag.value = false;
+  }
+};
+
+const handleDeleteTag = async (tagName) => {
+  if (!confirm(`Tem certeza que deseja deletar a tag "${tagName}"?`)) {
+    return;
+  }
+  
+  try {
+    await TagService.deleteTag(route.params.id, tagName);
+    await loadTags();
+  } catch (error) {
+    console.error('Erro ao deletar tag:', error);
+    alert(error.message);
+  }
+};
+</script>
+
+<style scoped>
+.repo-detail-container {
+  min-height: 100vh;
+  background-color: var(--bg-deep);
+}
+
+.repo-header {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  margin-bottom: var(--space-8);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-6);
+}
+
+.commit-item {
+  padding: var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background-color var(--transition-fast);
+}
+
+.commit-item:hover {
+  background-color: var(--bg-elevated);
+}
+
+.commit-item:last-child {
+  border-bottom: none;
+}
+
+.commit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.commit-hash {
+  background-color: var(--bg-elevated);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-primary-400);
+}
+
+.commit-date {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+}
+
+.commit-message {
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.commit-meta {
+  display: flex;
+  gap: var(--space-4);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-3);
+}
+
+.commit-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.table-container {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.tags-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-4);
+}
+
+.tag-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  transition: all var(--transition-base);
+}
+
+.tag-card:hover {
+  border-color: var(--border-medium);
+  box-shadow: var(--shadow-md);
+}
+
+.empty-tab {
+  padding: var(--space-12);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.empty-state {
+  text-align: center;
+  padding: var(--space-16) var(--space-8);
+}
+
+.empty-state h3 {
+  margin: var(--space-6) 0;
+  color: var(--text-primary);
+}
+
+@media (max-width: 1024px) {
+  .repo-header {
+    padding: var(--space-6);
+  }
+  
+  .tags-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .repo-header {
+    flex-direction: column;
+    padding: var(--space-5);
+    gap: var(--space-4);
+  }
+  
+  .repo-header > div:first-child {
+    width: 100%;
+  }
+  
+  .repo-header > div:last-child {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  
+  .repo-header > div:last-child button {
+    width: 100%;
+  }
+  
+  .repo-header h1 {
+    font-size: var(--font-size-2xl);
+  }
+  
+  .commit-item {
+    padding: var(--space-4);
+  }
+  
+  .commit-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+  
+  .commit-meta {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  
+  .commit-actions {
+    width: 100%;
+  }
+  
+  .commit-actions button {
+    width: 100%;
+  }
+  
+  .table-container {
+    overflow-x: auto;
+    border-radius: var(--radius-md);
+  }
+  
+  .table {
+    min-width: 700px;
+  }
+  
+  .table th,
+  .table td {
+    padding: var(--space-3);
+    font-size: var(--font-size-sm);
+  }
+  
+  .tags-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .tag-card {
+    padding: var(--space-4);
+  }
+  
+  .empty-state {
+    padding: var(--space-12) var(--space-4);
+  }
+  
+  .empty-state h3 {
+    font-size: var(--font-size-xl);
+  }
+}
+
+@media (max-width: 480px) {
+  .repo-header {
+    padding: var(--space-4);
+  }
+  
+  .repo-header h1 {
+    font-size: var(--font-size-xl);
+  }
+  
+  .repo-header p {
+    font-size: var(--font-size-sm);
+  }
+  
+  .repo-header > div:first-child > div:last-child {
+    flex-direction: column;
+    gap: var(--space-2);
+    font-size: var(--font-size-xs);
+  }
+  
+  .commit-item {
+    padding: var(--space-3);
+  }
+  
+  .commit-hash {
+    font-size: var(--font-size-xs);
+  }
+  
+  .commit-message {
+    font-size: var(--font-size-sm);
+  }
+  
+  .commit-meta {
+    font-size: var(--font-size-xs);
+  }
+  
+  .table th,
+  .table td {
+    padding: var(--space-2);
+    font-size: var(--font-size-xs);
+  }
+  
+  .tag-card {
+    padding: var(--space-3);
+  }
+  
+  .tag-card h4 {
+    font-size: var(--font-size-base);
+  }
+  
+  .empty-state {
+    padding: var(--space-8) var(--space-4);
+  }
+  
+  .empty-state i {
+    font-size: 3rem !important;
+  }
+}
+</style>

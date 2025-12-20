@@ -33,7 +33,7 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import HeaderBar from '../components/HeaderBar.vue';
+import HeaderBar from '../components/layout/HeaderBar.vue';
 
 const router = useRouter();
 

@@ -5,8 +5,22 @@ const router = createRouter({
   routes: [
     {
       path: "/",
-      name: "home",
-      component: () => import("../views/HomeView.vue"),
+      redirect: "/dashboard",
+    },
+    {
+      path: "/dashboard",
+      name: "dashboard",
+      component: () => import("../pages/DashboardView.vue"),
+    },
+    {
+      path: "/repos",
+      name: "repos",
+      component: () => import("../pages/RepoListView.vue"),
+    },
+    {
+      path: "/repos/:id",
+      name: "repo-detail",
+      component: () => import("../pages/RepoDetailView.vue"),
     },
     {
       path: "/repositorio",
