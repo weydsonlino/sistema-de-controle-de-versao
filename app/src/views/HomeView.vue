@@ -4,7 +4,7 @@
     <main class="content-wrapper">
       <section class="hero-section">
         <h1>Seus Repositórios</h1>
-        <p>Gerencie seus projetos de forma eficiente, organizada e profissionalismo.</p>
+        <p>Gerencie seus projetos de forma eficiente, organizada e profissional.</p>
       </section>
       <div class="repo-grid">
         <div v-for="repo in repositorios" :key="repo.nome" class="repo-card">
@@ -18,11 +18,10 @@
           <div class="card-actions">
             <button class="btn-primary" @click="handleOpenRepo(repo)">
               <i class="fas fa-external-link-alt"></i>
-              <span>Acessar Projeto</span>
+              <span>Acessar</span>
             </button>
             <button class="btn-outline" @click="handleDeleteRepo(repo)">
-              <i class="fas fa-trash-alt"></i>
-              <span>Excluir</span>
+              <i class="fas fa-eraser"></i>
             </button>
           </div>
         </div>

@@ -20,7 +20,7 @@
 
     <div class="repo-layout">
       <nav class="repo-sidebar">
-        <div class="section-title">ARQUIVOS</div>
+        <div class="section-title">FILES</div>
         <div class="file-tree">
           <div v-for="file in files" :key="file.name" class="file-item" :class="{ active: selectedFile === file }">
             <i :class="file.icon" :style="{ color: file.color }"></i>
@@ -36,14 +36,22 @@
         <div class="file-viewer">
           <div v-if="!selectedFile" class="no-file">
             <i class="fas fa-file-code"></i>
-            <p>Selecione um arquivo para visualizar ou editar.</p>
+            <p>Select a file to view or edit.</p>
           </div>
           <div v-else class="file-content">
             <div class="file-header">
-              <h3>{{ selectedFile.name }}</h3>
+              <h3>
+                {{ selectedFile.name }}
+                <span v-if="isModified" class="file-status modified">•</span>
+                <span v-else-if="selectedFile.saved" class="file-status saved">✓</span>
+              </h3>
               <div class="file-actions">
-                <button class="btn-small" @click="saveFile">Salvar</button>
-                <button class="btn-small" @click="commitFile">Commit</button>
+                <button class="btn-small" @click="saveFile" :disabled="!isModified">
+                  <i class="fas fa-save"></i> Save
+                </button>
+                <button class="btn-small" @click="commitFile">
+                  <i class="fas fa-code-commit"></i> Commit
+                </button>
               </div>
             </div>
             <textarea v-model="fileContent" class="file-editor" placeholder="Conteúdo do arquivo..."></textarea>
@@ -52,7 +60,7 @@
       </section>
 
       <aside class="repo-panel">
-        <div class="section-title">COMMITS RECENTES</div>
+        <div class="section-title">RECENT COMMITS</div>
         <div class="commits-list">
           <div v-for="commit in recentCommits" :key="commit.hash" class="commit-item">
             <div class="commit-meta">
@@ -68,7 +76,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -76,6 +84,19 @@ const router = useRouter();
 const repoName = ref('Meu Repositório');
 const selectedFile = ref(null);
 const fileContent = ref('');
+const isModified = ref(false);
+
+// Detectar mudanças no conteúdo
+watch(fileContent, (newContent, oldContent) => {
+  if (selectedFile.value && newContent !== oldContent) {
+    isModified.value = true;
+    const fileIndex = files.value.findIndex(f => f.name === selectedFile.value.name);
+    if (fileIndex !== -1) {
+      files.value[fileIndex].modified = true;
+      files.value[fileIndex].saved = false;
+    }
+  }
+});
 
 const files = ref([
   { name: 'src/', icon: 'fas fa-folder', color: '#2f81f7', type: 'folder' },
@@ -85,16 +106,42 @@ const files = ref([
   { name: 'Header.vue', icon: 'fas fa-file-code', color: '#238636', type: 'file' }
 ]);
 
-const recentCommits = ref([
-  { time: '2025-12-20 14:00', msg: 'Update main component', hash: 'abc1234' },
-  { time: '2025-12-20 13:00', msg: 'Add new feature', hash: 'def5678' },
-  { time: '2025-12-20 12:00', msg: 'Initial setup', hash: 'ghi9012' }
-]);
+const recentCommits = ref([]);
+
+// Carregar commits salvos do localStorage
+const loadCommits = () => {
+  const savedCommits = localStorage.getItem('repo_commits');
+  if (savedCommits) {
+    recentCommits.value = JSON.parse(savedCommits);
+  } else {
+    // Commits iniciais se não houver nada salvo
+    recentCommits.value = [
+      { time: '2025-12-20 14:00', msg: 'Update main component', hash: 'abc1234' },
+      { time: '2025-12-20 13:00', msg: 'Add new feature', hash: 'def5678' },
+      { time: '2025-12-20 12:00', msg: 'Initial setup', hash: 'ghi9012' }
+    ];
+  }
+};
+
+// Salvar commits no localStorage
+const saveCommits = () => {
+  localStorage.setItem('repo_commits', JSON.stringify(recentCommits.value));
+};
 
 const selectFile = (file) => {
   if (file.type === 'file') {
     selectedFile.value = file;
-    fileContent.value = `// Conteúdo de ${file.name}\nconsole.log('Hello World');\n`;
+
+    // Tentar carregar conteúdo salvo do localStorage
+    const fileKey = `repo_file_${file.name}`;
+    const savedContent = localStorage.getItem(fileKey);
+
+    if (savedContent) {
+      fileContent.value = savedContent;
+    } else {
+      // Conteúdo padrão se não houver nada salvo
+      fileContent.value = `// Conteúdo de ${file.name}\nconsole.log('Hello World');\n`;
+    }
   }
 };
 
@@ -103,11 +150,49 @@ const editFile = (file) => {
 };
 
 const saveFile = () => {
-  alert('Arquivo salvo!');
+  if (selectedFile.value) {
+    // Salvar conteúdo no localStorage
+    const fileKey = `repo_file_${selectedFile.value.name}`;
+    localStorage.setItem(fileKey, fileContent.value);
+
+    // Atualizar o arquivo na lista
+    const fileIndex = files.value.findIndex(f => f.name === selectedFile.value.name);
+    if (fileIndex !== -1) {
+      files.value[fileIndex].saved = true;
+      files.value[fileIndex].modified = false;
+    }
+
+    isModified.value = false;
+    alert(`Arquivo "${selectedFile.value.name}" salvo com sucesso!`);
+  }
 };
 
 const commitFile = () => {
-  alert('Commit realizado!');
+  if (selectedFile.value && fileContent.value.trim()) {
+    // Primeiro salvar se não estiver salvo
+    if (isModified.value) {
+      saveFile();
+    }
+
+    // Criar commit
+    const commitMsg = prompt("Mensagem do commit:");
+    if (commitMsg) {
+      const newCommit = {
+        time: new Date().toISOString().slice(0, 16).replace('T', ' '),
+        msg: commitMsg,
+        hash: Math.random().toString(36).substr(2, 8),
+        file: selectedFile.value.name
+      };
+
+      recentCommits.value.unshift(newCommit);
+      saveCommits(); // Salvar no localStorage
+      isModified.value = false;
+
+      alert(`Commit realizado: "${commitMsg}"`);
+    }
+  } else {
+    alert('Selecione um arquivo e digite algum conteúdo antes de fazer commit.');
+  }
 };
 
 const novoCommit = () => {
@@ -119,6 +204,7 @@ const novoCommit = () => {
       hash: Math.random().toString(36).substr(2, 8)
     };
     recentCommits.value.unshift(newCommit);
+    saveCommits(); // Salvar no localStorage
   }
 };
 
@@ -127,6 +213,8 @@ const voltarHome = () => {
 };
 
 onMounted(() => {
+  // Carregar commits salvos
+  loadCommits();
   // Simular carregamento do repositório
   console.log('Repositório carregado');
 });
@@ -148,7 +236,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 40px;
+  padding: 0 50px;
   position: sticky;
   top: 0;
   z-index: 100;
@@ -179,7 +267,7 @@ onMounted(() => {
 
 .repo-actions {
   display: flex;
-  gap: 12px;
+  gap: 16px;
 }
 
 .btn-primary {
@@ -324,19 +412,23 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
   border-bottom: 1px solid #262626;
+  gap: 20px;
 }
 
 .file-header h3 {
   margin: 0;
   font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .file-actions {
   display: flex;
-  gap: 8px;
+  gap: 16px;
 }
 
 .btn-small {
@@ -409,6 +501,26 @@ onMounted(() => {
   font-size: 0.8rem;
   color: #8b949e;
   margin-bottom: 4px;
+}
+
+/* Indicadores de Status do Arquivo */
+.file-status {
+  font-size: 1.2em;
+  margin-left: 0;
+}
+
+.file-status.modified {
+  color: #d73a49;
+}
+
+.file-status.saved {
+  color: #28a745;
+}
+
+/* Botões desabilitados */
+.btn-small:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .commit-msg {
