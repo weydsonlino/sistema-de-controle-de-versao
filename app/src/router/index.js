@@ -32,6 +32,11 @@ const router = createRouter({
       name: "arquivo",
       component: () => import("../views/ArquivoView.vue"),
     },
+    {
+      path: "/perfil",
+      name: "perfil",
+      component: () => import("../views/ProfileView.vue"),
+    }
   ],
 });
 
