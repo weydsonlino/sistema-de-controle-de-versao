@@ -27,6 +27,25 @@ const delay = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
  */
 export async function getCurrentUser() {
     await delay();
+
+    // Tentar carregar dados do localStorage (salvos no login)
+    const savedUser = localStorage.getItem('user_data');
+
+    if (savedUser) {
+        try {
+            const userData = JSON.parse(savedUser);
+            // Mesclar com dados mock para garantir todos os campos
+            return {
+                ...mockUser,
+                ...userData,
+                id: mockUser.id // Manter ID fixo
+            };
+        } catch (e) {
+            console.error('Erro ao carregar dados do usuário:', e);
+        }
+    }
+
+    // Fallback para dados mock
     return { ...mockUser };
 }
 
