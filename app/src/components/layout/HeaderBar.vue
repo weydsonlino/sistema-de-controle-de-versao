@@ -92,8 +92,23 @@ const toggleUserMenu = () => {
 };
 
 const handleLogout = () => {
-  console.log('Logout');
-  showUserMenu.value = false;
+  if (confirm('Tem certeza que deseja sair?')) {
+    // Limpar dados do localStorage
+    localStorage.removeItem('user_theme');
+    localStorage.removeItem('user_preferences');
+    
+    // Fechar menu
+    showUserMenu.value = false;
+    
+    // Mostrar mensagem e recarregar (simulando logout)
+    alert('Você saiu com sucesso! Em um sistema real, você seria redirecionado para a tela de login.');
+    
+    // Em produção, você redirecionaria para login:
+    // router.push('/login');
+    
+    // Por enquanto, apenas recarrega a página
+    window.location.reload();
+  }
 };
 
 // Fechar menu ao clicar fora
