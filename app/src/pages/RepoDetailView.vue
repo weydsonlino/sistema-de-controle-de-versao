@@ -85,13 +85,13 @@
                     <span class="file-date">{{ file.lastModified }}</span>
                     <span class="file-size" v-if="!file.isDirectory">{{ file.size }}</span>
                   </div>
-                  <div class="file-actions" v-if="!file.isDirectory">
-                    <Button size="sm" variant="outline" @click.stop="handleEditFile(file)">
+                  <div class="file-actions">
+                    <button v-if="!file.isDirectory" class="action-btn action-btn-edit" @click.stop="handleEditFile(file)" title="Editar">
                       <i class="fas fa-edit"></i>
-                    </Button>
-                    <Button size="sm" variant="danger" @click.stop="handleDeleteFile(file)">
+                    </button>
+                    <button class="action-btn action-btn-delete" @click.stop="file.isDirectory ? handleDeleteFolder(file) : handleDeleteFile(file)" title="Excluir">
                       <i class="fas fa-trash"></i>
-                    </Button>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -616,11 +616,26 @@ const handleDeleteFile = async (file) => {
   
   try {
     // Simular exclusão do arquivo
+    files.value = files.value.filter(f => f.name !== file.name);
     alert(`Arquivo "${file.name}" excluído com sucesso!`);
-    await loadFiles();
   } catch (error) {
     console.error('Erro ao excluir arquivo:', error);
     alert('Erro ao excluir arquivo');
+  }
+};
+
+const handleDeleteFolder = async (folder) => {
+  if (!confirm(`Tem certeza que deseja excluir a pasta "${folder.name}"? Esta ação não pode ser desfeita.`)) {
+    return;
+  }
+  
+  try {
+    // Simular exclusão da pasta
+    files.value = files.value.filter(f => f.name !== folder.name);
+    alert(`Pasta "${folder.name}" excluída com sucesso!`);
+  } catch (error) {
+    console.error('Erro ao excluir pasta:', error);
+    alert('Erro ao excluir pasta');
   }
 };
 
@@ -901,12 +916,41 @@ const handleCreateFile = async () => {
 .file-actions {
   display: flex;
   gap: var(--space-2);
-  opacity: 0;
-  transition: opacity var(--transition-fast);
 }
 
-.file-item:hover .file-actions {
-  opacity: 1;
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-size: 0.875rem;
+}
+
+.action-btn:hover {
+  background-color: var(--bg-elevated);
+  transform: scale(1.1);
+}
+
+.action-btn-edit:hover {
+  color: var(--color-purple-400);
+  background-color: rgba(168, 85, 247, 0.1);
+}
+
+.action-btn-delete:hover {
+  color: var(--color-error);
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.action-btn:active {
+  transform: scale(0.95);
 }
 
 .file-info {
