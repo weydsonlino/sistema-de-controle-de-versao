@@ -59,6 +59,16 @@
                   <i class="fas fa-folder"></i>
                   <span>{{ currentPath || '/' }}</span>
                 </div>
+                <div style="display: flex; gap: var(--space-2);">
+                  <Button size="sm" variant="primary" @click="showCreateFolderModal = true">
+                    <i class="fas fa-folder-plus"></i>
+                    Criar Pasta
+                  </Button>
+                  <Button size="sm" variant="primary" @click="showCreateFileModal = true">
+                    <i class="fas fa-file-plus"></i>
+                    Criar Arquivo
+                  </Button>
+                </div>
               </div>
               
               <div class="files-list">
@@ -274,6 +284,54 @@
         </Button>
       </template>
     </Modal>
+    
+    <!-- Create Folder Modal -->
+    <Modal v-model="showCreateFolderModal" title="Criar Nova Pasta" width="500px">
+      <FormField
+        v-model="newFolder.name"
+        label="Nome da Pasta"
+        placeholder="nova-pasta"
+        required
+        :error="folderErrors.name"
+      />
+      
+      <template #footer>
+        <Button variant="outline" @click="showCreateFolderModal = false">
+          Cancelar
+        </Button>
+        <Button variant="primary" :loading="creatingFolder" @click="handleCreateFolder">
+          Criar Pasta
+        </Button>
+      </template>
+    </Modal>
+    
+    <!-- Create File Modal -->
+    <Modal v-model="showCreateFileModal" title="Criar Novo Arquivo" width="500px">
+      <FormField
+        v-model="newFile.name"
+        label="Nome do Arquivo"
+        placeholder="arquivo.js"
+        required
+        :error="fileErrors.name"
+      />
+      
+      <FormField
+        v-model="newFile.content"
+        label="Conteúdo Inicial (opcional)"
+        placeholder="// Seu código aqui..."
+        type="textarea"
+        rows="6"
+      />
+      
+      <template #footer>
+        <Button variant="outline" @click="showCreateFileModal = false">
+          Cancelar
+        </Button>
+        <Button variant="primary" :loading="creatingFile" @click="handleCreateFile">
+          Criar Arquivo
+        </Button>
+      </template>
+    </Modal>
   </div>
 </template>
 
@@ -315,6 +373,16 @@ const newBranch = ref({ nome: '' });
 const newTag = ref({ nome: '', commitHash: '' });
 const branchErrors = ref({});
 const tagErrors = ref({});
+
+// Folder and File creation state
+const showCreateFolderModal = ref(false);
+const showCreateFileModal = ref(false);
+const creatingFolder = ref(false);
+const creatingFile = ref(false);
+const newFolder = ref({ name: '' });
+const newFile = ref({ name: '', content: '' });
+const folderErrors = ref({});
+const fileErrors = ref({});
 
 onMounted(async () => {
   await loadRepo();
@@ -555,6 +623,109 @@ const handleDeleteFile = async (file) => {
     alert('Erro ao excluir arquivo');
   }
 };
+
+// Folder creation handler
+const handleCreateFolder = async () => {
+  folderErrors.value = {};
+  
+  if (!newFolder.value.name) {
+    folderErrors.value.name = 'Nome é obrigatório';
+    return;
+  }
+  
+  // Validate folder name (no special characters except dash and underscore)
+  if (!/^[a-zA-Z0-9_-]+$/.test(newFolder.value.name)) {
+    folderErrors.value.name = 'Nome inválido. Use apenas letras, números, - e _';
+    return;
+  }
+  
+  // Check if folder already exists
+  if (files.value.some(f => f.name === newFolder.value.name)) {
+    folderErrors.value.name = 'Uma pasta ou arquivo com este nome já existe';
+    return;
+  }
+  
+  creatingFolder.value = true;
+  try {
+    // Simulate folder creation
+    const newFolderItem = {
+      name: newFolder.value.name,
+      isDirectory: true,
+      size: '-',
+      lastModified: new Date().toISOString().split('T')[0]
+    };
+    
+    files.value.push(newFolderItem);
+    
+    // Sort files: folders first, then alphabetically
+    files.value.sort((a, b) => {
+      if (a.isDirectory && !b.isDirectory) return -1;
+      if (!a.isDirectory && b.isDirectory) return 1;
+      return a.name.localeCompare(b.name);
+    });
+    
+    showCreateFolderModal.value = false;
+    newFolder.value = { name: '' };
+    alert(`Pasta "${newFolderItem.name}" criada com sucesso!`);
+  } catch (error) {
+    console.error('Erro ao criar pasta:', error);
+    folderErrors.value.name = error.message;
+  } finally {
+    creatingFolder.value = false;
+  }
+};
+
+// File creation handler
+const handleCreateFile = async () => {
+  fileErrors.value = {};
+  
+  if (!newFile.value.name) {
+    fileErrors.value.name = 'Nome é obrigatório';
+    return;
+  }
+  
+  // Validate file name
+  if (!/^[a-zA-Z0-9_.-]+$/.test(newFile.value.name)) {
+    fileErrors.value.name = 'Nome inválido. Use apenas letras, números, -, _ e .';
+    return;
+  }
+  
+  // Check if file already exists
+  if (files.value.some(f => f.name === newFile.value.name)) {
+    fileErrors.value.name = 'Um arquivo ou pasta com este nome já existe';
+    return;
+  }
+  
+  creatingFile.value = true;
+  try {
+    // Simulate file creation
+    const contentSize = newFile.value.content ? new Blob([newFile.value.content]).size : 0;
+    const newFileItem = {
+      name: newFile.value.name,
+      isDirectory: false,
+      size: contentSize > 1024 ? `${(contentSize / 1024).toFixed(1)} KB` : `${contentSize} B`,
+      lastModified: new Date().toISOString().split('T')[0]
+    };
+    
+    files.value.push(newFileItem);
+    
+    // Sort files: folders first, then alphabetically
+    files.value.sort((a, b) => {
+      if (a.isDirectory && !b.isDirectory) return -1;
+      if (!a.isDirectory && b.isDirectory) return 1;
+      return a.name.localeCompare(b.name);
+    });
+    
+    showCreateFileModal.value = false;
+    newFile.value = { name: '', content: '' };
+    alert(`Arquivo "${newFileItem.name}" criado com sucesso!`);
+  } catch (error) {
+    console.error('Erro ao criar arquivo:', error);
+    fileErrors.value.name = error.message;
+  } finally {
+    creatingFile.value = false;
+  }
+};
 </script>
 
 <style scoped>
@@ -667,6 +838,10 @@ const handleDeleteFile = async (file) => {
   padding: var(--space-4);
   border-bottom: 1px solid var(--border-subtle);
   background-color: var(--bg-elevated);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
 }
 
 .current-path {
