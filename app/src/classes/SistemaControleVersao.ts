@@ -6,8 +6,9 @@ export class SistemaControleVersao {
   constructor() {
     this.repositorios = [];
   }
-  createRepositorio(nome: string, raiz: NoDiretorio): Repositorio {
-    const novoRepositorio = new Repositorio(nome, raiz);
+
+  createRepositorio(nome: string): Repositorio {
+    const novoRepositorio = new Repositorio(nome);
     this.repositorios.push(novoRepositorio);
     return novoRepositorio;
   }
@@ -18,5 +19,16 @@ export class SistemaControleVersao {
 
   getRepositorioByName(nome: string): Repositorio | undefined {
     return this.repositorios.find((repositorio) => repositorio.nome === nome);
+  }
+
+  deleteRepositorio(nome: string): boolean {
+    const repositorio = this.getRepositorioByName(nome);
+    if (!repositorio) {
+      return false;
+    }
+    this.repositorios = this.repositorios.filter(
+      (repositorio) => repositorio.nome !== nome
+    );
+    return true;
   }
 }

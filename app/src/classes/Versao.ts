@@ -5,6 +5,7 @@ export class Versao {
   comentario: string;
   conteudo: string;
   hash: string;
+  atual: boolean;
   constructor(
     id: number,
     dataHora: string,
@@ -19,5 +20,10 @@ export class Versao {
     this.comentario = comentario;
     this.conteudo = conteudo;
     this.hash = hash;
+    this.atual = true;
+  }
+
+  mudarVersaoAtual(atual: boolean): void {
+    this.atual = atual;
   }
 }

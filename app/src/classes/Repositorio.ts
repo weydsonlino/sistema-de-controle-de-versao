@@ -5,22 +5,26 @@ import { Versao } from "./Versao";
 export class Repositorio {
   nome: string;
   raiz: NoDiretorio;
-  constructor(nome: string, raiz: NoDiretorio) {
+  constructor(nome: string) {
     this.nome = nome;
-    this.raiz = raiz;
+    this.raiz = new NoDiretorio("/", null);
   }
 
   adicionarPasta(nome: string): void {
-    const novoDiretorio = new NoDiretorio(nome);
+    const novoDiretorio = new NoDiretorio(nome, this.raiz);
     this.raiz.criarFilho(novoDiretorio);
   }
 
   adicionarArquivo(nome: string, id: string, versao: Versao): void {
-    const novoArquivo = new NoArquivo(nome, versao);
+    const novoArquivo = new NoArquivo(nome, versao, this.raiz);
     this.raiz.criarFilho(novoArquivo);
   }
 
   getRaiz(): NoDiretorio {
     return this.raiz;
+  }
+
+  editarNomeRepositorio(novoNome: string): void {
+    this.nome = novoNome;
   }
 }
