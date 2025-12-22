@@ -10,6 +10,8 @@ export class SistemaControleVersao {
   createRepositorio(nome: string): Repositorio {
     const novoRepositorio = new Repositorio(nome);
     this.repositorios.push(novoRepositorio);
+    console.log("Criado");
+    console.log(this.repositorios);
     return novoRepositorio;
   }
 
@@ -19,6 +21,10 @@ export class SistemaControleVersao {
 
   getRepositorioByName(nome: string): Repositorio | undefined {
     return this.repositorios.find((repositorio) => repositorio.nome === nome);
+  }
+
+  getRepositorioById(id: number): Repositorio | undefined {
+    return this.repositorios.find((repositorio) => repositorio.id === id);
   }
 
   deleteRepositorio(nome: string): boolean {
