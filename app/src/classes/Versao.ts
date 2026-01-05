@@ -1,26 +1,30 @@
+import { NoArquivo } from "./NoArquivo";
+
 export class Versao {
   id: number;
   dataHora: string;
-  tamanho: number;
+  tamanho: string;
   comentario: string;
   conteudo: string;
   hash: string;
   atual: boolean;
+  file: NoArquivo;
   constructor(
-    id: number,
-    dataHora: string,
-    tamanho: number,
+    tamanho: string,
     comentario: string,
     conteudo: string,
-    hash: string
+    hash: string,
+    file: NoArquivo
   ) {
-    this.id = id;
-    this.dataHora = dataHora;
+    this.dataHora = new Date().toISOString();
     this.tamanho = tamanho;
     this.comentario = comentario;
     this.conteudo = conteudo;
     this.hash = hash;
     this.atual = true;
+    this.file = file;
+    console.log(file);
+    this.id = file.versao.length + 1;
   }
 
   mudarVersaoAtual(atual: boolean): void {

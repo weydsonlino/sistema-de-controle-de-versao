@@ -4,10 +4,11 @@ import { Versao } from "./Versao";
 
 export class NoArquivo extends NoArvore {
   versao: Versao[];
-  constructor(nome: string, versao: Versao, pai: NoDiretorio | null) {
+  ultimaMudança: String;
+  constructor(nome: string, pai: NoDiretorio) {
     super(nome, pai);
     this.versao = [];
-    this.versao.push(versao);
+    this.ultimaMudança = new Date().toISOString();
   }
 
   getVersoes(): Versao[] {

@@ -38,7 +38,7 @@ const router = createRouter({
       component: () => import("../pages/RepoFormView.vue"),
     },
     {
-      path: "/repos/:id/arquivo",
+      path: "/repos/:id/arquivo/:pathMatch(.*)*",
       name: "file-editor",
       component: () => import("../pages/FileEditorView.vue"),
     },
@@ -56,7 +56,7 @@ const router = createRouter({
       path: "/perfil",
       name: "perfil",
       component: () => import("../views/ProfileView.vue"),
-    }
+    },
   ],
 });
 

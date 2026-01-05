@@ -86,7 +86,11 @@ export async function createRepo(data) {
     commits: 1,
   };
 
-  sistema.createRepositorio(newRepo.nome);
+  sistema.createRepositorio(
+    newRepo.nome,
+    newRepo.visibilidade,
+    newRepo.descricao
+  );
   return sistema.getRepositorios();
 }
 
@@ -103,7 +107,7 @@ export async function search(query = "", filters = {}, page = 1, size = 10) {
 
   const repoSistema = sistema.getRepositorios();
 
-  let filtered = [...mockRepos, ...repoSistema];
+  let filtered = repoSistema;
 
   // Filtrar por query
   if (query) {
@@ -163,17 +167,11 @@ export async function getById(id) {
 export async function updateRepo(id, data) {
   await delay();
 
-  const index = mockRepos.findIndex((repo) => repo.id === id);
-  if (index === -1) {
-    throw new Error("Repositório não encontrado");
-  }
+  sistema
+    .getRepositorioById(Number(id))
+    .editarRepositorio(data.nome, data.visibilidade, data.descricao);
 
-  mockRepos[index] = {
-    ...mockRepos[index],
-    ...data,
-  };
-
-  return mockRepos[index];
+  return true;
 }
 
 /**
@@ -183,13 +181,7 @@ export async function updateRepo(id, data) {
  */
 export async function deleteRepo(id) {
   await delay();
-
-  const index = mockRepos.findIndex((repo) => repo.id === id);
-  if (index === -1) {
-    throw new Error("Repositório não encontrado");
-  }
-
-  mockRepos.splice(index, 1);
+  sistema.deleteRepositorioById(Number(id));
 }
 
 /**
@@ -216,7 +208,7 @@ export async function getAll() {
   await delay();
   const repoSistema = sistema.getRepositorios();
   const r = mockRepos.concat(repoSistema);
-  return r;
+  return repoSistema;
 }
 
 /**
@@ -227,9 +219,19 @@ export async function getStats() {
   await delay();
 
   return {
-    totalRepos: mockRepos.length,
+    totalRepos: sistema.getRepositorios().length,
     totalCommits: mockRepos.reduce((sum, repo) => sum + repo.commits, 0),
     totalBranches: mockRepos.reduce((sum, repo) => sum + repo.branches, 0),
     totalTags: mockRepos.reduce((sum, repo) => sum + repo.tags, 0),
   };
+}
+
+//Funções necessarias WW
+
+export async function buscarArquivo(repoId, caminho) {
+  const repo = await getById(repoId);
+  console.log("", repo);
+  const arquivo = await repo.branchPrincipal.raiz.buscarPorCaminho(caminho);
+  console.log("", arquivo);
+  return arquivo;
 }

@@ -1,5 +1,4 @@
 import { Repositorio } from "./Repositorio";
-import { NoDiretorio } from "./NoDiretorio";
 
 export class SistemaControleVersao {
   repositorios: Repositorio[];
@@ -7,18 +6,26 @@ export class SistemaControleVersao {
     this.repositorios = [];
   }
 
-  createRepositorio(nome: string): Repositorio {
-    const novoRepositorio = new Repositorio(nome);
+  createRepositorio(
+    nome: string,
+    visibilidade: "publico" | "privado",
+    descricao?: string
+  ): Repositorio {
+    const novoRepositorio = new Repositorio(nome, visibilidade, descricao);
     this.repositorios.push(novoRepositorio);
-    console.log("Criado");
-    console.log(this.repositorios);
     return novoRepositorio;
   }
 
-  getRepositorios(): Repositorio[] {
-    return this.repositorios;
+  deleteRepositorioById(id: number): boolean {
+    const repositorio = this.getRepositorioById(id);
+    if (!repositorio) {
+      return false;
+    }
+    this.repositorios = this.repositorios.filter(
+      (repositorio) => repositorio.id !== id
+    );
+    return true;
   }
-
   getRepositorioByName(nome: string): Repositorio | undefined {
     return this.repositorios.find((repositorio) => repositorio.nome === nome);
   }
@@ -26,15 +33,7 @@ export class SistemaControleVersao {
   getRepositorioById(id: number): Repositorio | undefined {
     return this.repositorios.find((repositorio) => repositorio.id === id);
   }
-
-  deleteRepositorio(nome: string): boolean {
-    const repositorio = this.getRepositorioByName(nome);
-    if (!repositorio) {
-      return false;
-    }
-    this.repositorios = this.repositorios.filter(
-      (repositorio) => repositorio.nome !== nome
-    );
-    return true;
+  getRepositorios(): Repositorio[] {
+    return this.repositorios;
   }
 }

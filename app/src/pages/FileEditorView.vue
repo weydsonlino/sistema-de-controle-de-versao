@@ -1,10 +1,13 @@
 <template>
   <div class="file-editor-container">
     <HeaderBar />
-    
-    <main class="container" style="padding-top: var(--space-8); padding-bottom: var(--space-8);">
+
+    <main
+      class="container"
+      style="padding-top: var(--space-8); padding-bottom: var(--space-8)"
+    >
       <LoadingSpinner v-if="loading" message="Carregando arquivo..." />
-      
+
       <div v-else class="editor-wrapper">
         <!-- Breadcrumb -->
         <nav class="breadcrumb">
@@ -15,17 +18,20 @@
           <span class="separator">/</span>
           <span class="breadcrumb-item active">{{ fileName }}</span>
         </nav>
-        
+
         <!-- File Header -->
         <div class="file-header">
           <div class="file-info">
-            <i :class="getFileIcon(fileName)" style="font-size: 1.5rem; color: var(--color-primary-500);"></i>
+            <i
+              :class="getFileIcon(fileName)"
+              style="font-size: 1.5rem; color: var(--color-primary-500)"
+            ></i>
             <div>
               <h2>{{ fileName }}</h2>
               <p>{{ fileSize }} • Última modificação: {{ lastModified }}</p>
             </div>
           </div>
-          
+
           <div class="file-actions">
             <Button variant="outline" @click="handleCancel">
               <i class="fas fa-times"></i>
@@ -37,21 +43,21 @@
             </Button>
           </div>
         </div>
-        
+
         <!-- Editor -->
         <div class="editor-container">
           <div class="editor-toolbar">
             <div class="toolbar-left">
-              <button 
-                class="toolbar-btn" 
+              <button
+                class="toolbar-btn"
                 :class="{ active: viewMode === 'edit' }"
                 @click="viewMode = 'edit'"
               >
                 <i class="fas fa-edit"></i>
                 Editar
               </button>
-              <button 
-                class="toolbar-btn" 
+              <button
+                class="toolbar-btn"
                 :class="{ active: viewMode === 'preview' }"
                 @click="viewMode = 'preview'"
                 v-if="isMarkdown"
@@ -60,17 +66,19 @@
                 Visualizar
               </button>
             </div>
-            
+
             <div class="toolbar-right">
               <span class="line-count">{{ lineCount }} linhas</span>
               <span class="char-count">{{ charCount }} caracteres</span>
             </div>
           </div>
-          
+
           <!-- Edit Mode -->
           <div v-show="viewMode === 'edit'" class="editor-area">
             <div class="line-numbers">
-              <div v-for="n in lineCount" :key="n" class="line-number">{{ n }}</div>
+              <div v-for="n in lineCount" :key="n" class="line-number">
+                {{ n }}
+              </div>
             </div>
             <textarea
               v-model="fileContent"
@@ -80,13 +88,16 @@
               @keydown.tab.prevent="handleTab"
             ></textarea>
           </div>
-          
+
           <!-- Preview Mode (para Markdown) -->
-          <div v-show="viewMode === 'preview' && isMarkdown" class="preview-area">
+          <div
+            v-show="viewMode === 'preview' && isMarkdown"
+            class="preview-area"
+          >
             <div class="markdown-preview" v-html="markdownPreview"></div>
           </div>
         </div>
-        
+
         <!-- Commit Message -->
         <div class="commit-section">
           <h3>Commit das alterações</h3>
@@ -108,30 +119,32 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import HeaderBar from '../components/layout/HeaderBar.vue';
-import Button from '../components/common/Button.vue';
-import FormField from '../components/common/FormField.vue';
-import LoadingSpinner from '../components/common/LoadingSpinner.vue';
-
+import { ref, computed, onMounted } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import HeaderBar from "../components/layout/HeaderBar.vue";
+import Button from "../components/common/Button.vue";
+import FormField from "../components/common/FormField.vue";
+import LoadingSpinner from "../components/common/LoadingSpinner.vue";
+import * as repoService from "../services/RepoService.js";
+import { Versao } from "../classes/Versao.js";
 const route = useRoute();
 const router = useRouter();
 
 const loading = ref(false);
 const saving = ref(false);
-const viewMode = ref('edit');
+const viewMode = ref("edit");
 const errors = ref({});
 
-const repoId = ref(route.params.id || '1');
-const repoName = ref('projeto-sistema-v1');
-const fileName = ref(route.query.file || 'README.md');
-const fileContent = ref('');
-const commitMessage = ref('');
-const lastModified = ref('2024-12-20 10:30');
+const repoId = ref(route.params.id);
+const repoName = ref();
+const fileName = ref(route.query.file);
+const fileContent = ref("");
+const commitMessage = ref("");
+const lastModified = ref();
+const file = ref();
 
 const lineCount = computed(() => {
-  return fileContent.value.split('\n').length;
+  return fileContent.value.split("\n").length;
 });
 
 const charCount = computed(() => {
@@ -146,33 +159,36 @@ const fileSize = computed(() => {
 });
 
 const isMarkdown = computed(() => {
-  return fileName.value.endsWith('.md');
+  //return fileName.value.endsWith(".md");
 });
 
 const markdownPreview = computed(() => {
   // Simples conversão de Markdown para HTML (em produção, use uma lib como marked.js)
   let html = fileContent.value;
-  
+
   // Headers
-  html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
-  html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
-  html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
-  
+  html = html.replace(/^### (.*$)/gim, "<h3>$1</h3>");
+  html = html.replace(/^## (.*$)/gim, "<h2>$1</h2>");
+  html = html.replace(/^# (.*$)/gim, "<h1>$1</h1>");
+
   // Bold
-  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  
+  html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
   // Italic
-  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-  
+  html = html.replace(/\*(.*?)\*/g, "<em>$1</em>");
+
   // Code inline
-  html = html.replace(/`(.*?)`/g, '<code>$1</code>');
-  
+  html = html.replace(/`(.*?)`/g, "<code>$1</code>");
+
   // Links
-  html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
-  
+  html = html.replace(
+    /\[(.*?)\]\((.*?)\)/g,
+    '<a href="$2" target="_blank">$1</a>'
+  );
+
   // Line breaks
-  html = html.replace(/\n/g, '<br>');
-  
+  html = html.replace(/\n/g, "<br>");
+
   return html;
 });
 
@@ -180,71 +196,57 @@ onMounted(() => {
   loadFile();
 });
 
-const loadFile = () => {
+const loadFile = async () => {
   loading.value = true;
-  
-  // Simular carregamento de arquivo
-  setTimeout(() => {
-    // Conteúdo de exemplo baseado no tipo de arquivo
-    if (fileName.value.endsWith('.md')) {
-      fileContent.value = `# ${repoName.value}
 
-## Descrição
-Este é um projeto de sistema de controle de versão.
+  const idNum = Number(repoId.value);
+  const repo = await repoService.getById(idNum);
+  repoName.value = repo.nome;
 
-## Instalação
-\`\`\`bash
-npm install
-\`\`\`
+  const caminhoCodificado = route.params.pathMatch;
+  const caminho = decodeURIComponent(caminhoCodificado);
 
-## Uso
-\`\`\`bash
-npm run dev
-\`\`\`
+  file.value = await buscarPorCaminho();
 
-## Contribuindo
-Pull requests são bem-vindos!
+  let versoes = file.value.getVersoes();
 
-## Licença
-MIT`;
-    } else if (fileName.value.endsWith('.js')) {
-      fileContent.value = `// ${fileName.value}
-
-export function exemplo() {
-  console.log('Hello World');
-}
-
-export default {
-  nome: '${repoName.value}',
-  versao: '1.0.0'
-};`;
-    } else if (fileName.value.endsWith('.json')) {
-      fileContent.value = `{
-  "name": "${repoName.value}",
-  "version": "1.0.0",
-  "description": "Sistema de controle de versão",
-  "main": "index.js",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build"
-  }
-}`;
-    } else {
-      fileContent.value = `Conteúdo do arquivo ${fileName.value}`;
+  let versaoAtual = versoes.forEach((versao) => {
+    if ((versao.atual = true)) {
+      console.log(versao);
+      fileContent.value = versao.conteudo;
+      lastModified.value = file.value.ultimaModificacao;
+      return versao;
     }
-    
-    loading.value = false;
-  }, 500);
+  });
+
+  console.log(file.value);
+  console.log(repo);
+  const noArquivo = repo.branchPrincipal.raiz.buscarPorCaminho(caminho);
+
+  //Precisará ser alterado em breve
+  fileContent.value = fileContent.value;
+
+  loading.value = false;
 };
 
+async function buscarPorCaminho() {
+  const caminhoCodificado = route.params.pathMatch;
+  const caminho = decodeURIComponent(caminhoCodificado);
+
+  const file = await repoService.buscarArquivo(repoId.value, caminho);
+  console.log(file);
+  return file;
+}
+
 const getFileIcon = (filename) => {
-  if (filename.endsWith('.md')) return 'fas fa-file-alt';
-  if (filename.endsWith('.js')) return 'fab fa-js-square';
-  if (filename.endsWith('.json')) return 'fas fa-file-code';
-  if (filename.endsWith('.css')) return 'fab fa-css3-alt';
-  if (filename.endsWith('.html')) return 'fab fa-html5';
-  if (filename.endsWith('.vue')) return 'fab fa-vuejs';
-  return 'fas fa-file';
+  return "fas fa-file";
+  if (filename.endsWith(".md")) return "fas fa-file-alt";
+  if (filename.endsWith(".js")) return "fab fa-js-square";
+  if (filename.endsWith(".json")) return "fas fa-file-code";
+  if (filename.endsWith(".css")) return "fab fa-css3-alt";
+  if (filename.endsWith(".html")) return "fab fa-html5";
+  if (filename.endsWith(".vue")) return "fab fa-vuejs";
+  return "fas fa-file";
 };
 
 const updateCounts = () => {
@@ -255,10 +257,13 @@ const handleTab = (event) => {
   const textarea = event.target;
   const start = textarea.selectionStart;
   const end = textarea.selectionEnd;
-  
+
   // Inserir tab (2 espaços)
-  fileContent.value = fileContent.value.substring(0, start) + '  ' + fileContent.value.substring(end);
-  
+  fileContent.value =
+    fileContent.value.substring(0, start) +
+    "  " +
+    fileContent.value.substring(end);
+
   // Mover cursor
   setTimeout(() => {
     textarea.selectionStart = textarea.selectionEnd = start + 2;
@@ -267,24 +272,30 @@ const handleTab = (event) => {
 
 const handleSave = () => {
   errors.value = {};
-  
+
   if (!commitMessage.value) {
-    errors.value.commitMessage = 'Mensagem do commit é obrigatória';
+    errors.value.commitMessage = "Mensagem do commit é obrigatória";
     return;
   }
-  
   saving.value = true;
-  
-  // Simular salvamento
-  setTimeout(() => {
-    alert(`Arquivo salvo com sucesso!\nCommit: "${commitMessage.value}"`);
-    saving.value = false;
-    router.push(`/repos/${repoId.value}`);
-  }, 1000);
+
+  const versao = new Versao(
+    fileSize,
+    commitMessage.value,
+    fileContent.value,
+    "aaa",
+    file.value
+  );
+
+  file.value.adicionarVersao(versao);
+  file.value.ultimaModificacao = new Date();
+
+  saving.value = false;
+  router.push(`/repos/${repoId.value}`);
 };
 
 const handleCancel = () => {
-  if (confirm('Deseja cancelar? As alterações não salvas serão perdidas.')) {
+  if (confirm("Deseja cancelar? As alterações não salvas serão perdidas.")) {
     router.push(`/repos/${repoId.value}`);
   }
 };
@@ -532,26 +543,26 @@ const handleCancel = () => {
     flex-direction: column;
     padding: var(--space-4);
   }
-  
+
   .file-actions {
     width: 100%;
     flex-direction: column;
   }
-  
+
   .file-actions button {
     width: 100%;
   }
-  
+
   .editor-toolbar {
     flex-direction: column;
     gap: var(--space-3);
     align-items: flex-start;
   }
-  
+
   .line-numbers {
     display: none;
   }
-  
+
   .code-editor {
     font-size: var(--font-size-xs);
   }

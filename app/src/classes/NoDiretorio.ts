@@ -6,6 +6,36 @@ export class NoDiretorio extends NoArvore {
     this.filhos = [];
   }
 
+  buscarPorCaminho(caminho: string): NoArvore | null {
+    const partes = caminho.split("/").filter(Boolean);
+    return this.buscarRecursivo(partes);
+  }
+
+  private buscarRecursivo(partes: string[]): NoArvore | null {
+    if (partes.length === 0) return this;
+    //Retirar a gambiarra
+    const [atual, ...resto] = partes;
+    const filho = this.filhos.find((f) => f.nome === resto[0]);
+    if (!filho) return null;
+
+    if (filho instanceof NoDiretorio) {
+      return filho.buscarRecursivo(resto);
+    }
+
+    return filho;
+  }
+
+  atualizarCaminho(): void {
+    this.caminho = this.pai ? `${this.pai.caminho}/${this.nome}` : this.nome;
+    for (let filho of this.filhos) {
+      if (filho instanceof NoDiretorio) {
+        filho.atualizarCaminho();
+      } else {
+        filho.caminho = `${this.caminho}/${filho.nome}`;
+      }
+    }
+  }
+
   criarFilho(filho: NoArvore): void {
     this.filhos.push(filho);
   }
@@ -33,16 +63,5 @@ export class NoDiretorio extends NoArvore {
 
   editarNome(nome: string): void {
     this.nome = nome;
-  }
-
-  atualizarCaminho(): void {
-    this.caminho = this.pai ? `${this.pai.caminho}/${this.nome}` : this.nome;
-    for (let filho of this.filhos) {
-      if (filho instanceof NoDiretorio) {
-        filho.atualizarCaminho();
-      } else {
-        filho.caminho = `${this.caminho}/${filho.nome}`;
-      }
-    }
   }
 }

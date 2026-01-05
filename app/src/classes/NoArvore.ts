@@ -9,4 +9,8 @@ export abstract class NoArvore {
     this.pai = pai;
     this.caminho = pai ? `${pai.caminho}/${nome}` : nome;
   }
+
+  getCaminho(): string {
+    return this.caminho;
+  }
 }
