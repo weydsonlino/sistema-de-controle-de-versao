@@ -1,6 +1,7 @@
 import { Commit } from "./commit";
 import { NoArquivo } from "./NoArquivo";
 import { NoDiretorio } from "./NoDiretorio";
+import { Versao } from "./Versao";
 
 export class Branch {
   nome: string;
@@ -26,5 +27,15 @@ export class Branch {
 
   getRaiz(): NoDiretorio {
     return this.raiz;
+  }
+
+  criarCommit(arquivoModificado: NoArquivo, versao: Versao): Commit {
+    const novoCommit = new Commit(arquivoModificado, versao);
+    this.commits.push(novoCommit);
+    return novoCommit;
+  }
+
+  buscarCommitEmAndamento(): Commit | undefined {
+    return this.commits.find((commit) => commit.committed === false);
   }
 }

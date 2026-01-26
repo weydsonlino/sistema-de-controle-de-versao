@@ -14,7 +14,7 @@ export class Versao {
     comentario: string,
     conteudo: string,
     hash: string,
-    file: NoArquivo
+    file: NoArquivo,
   ) {
     this.dataHora = new Date().toISOString();
     this.tamanho = tamanho;

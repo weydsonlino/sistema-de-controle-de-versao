@@ -17,7 +17,7 @@ export class Repositorio {
   constructor(
     nome: string,
     visibilidade: "publico" | "privado",
-    descricao?: string
+    descricao?: string,
   ) {
     this.nome = nome;
     this.visibilidade = visibilidade || "privado";
@@ -27,7 +27,7 @@ export class Repositorio {
     Repositorio.value += 1;
     this.id = Repositorio.value;
 
-    const main = this.criarBranch("main", new NoDiretorio("raiz", null));
+    const main = this.criarBranch("main");
     if (main) {
       main.principal = true;
       this.branchPrincipal = main;
@@ -40,11 +40,11 @@ export class Repositorio {
     this.nome = novoNome;
   }
 
-  criarBranch(nome: string, raiz: NoDiretorio): Branch | void {
+  criarBranch(nome: string): Branch | void {
     if (this.getBranchByName(nome)) {
       return;
     }
-    const novaBranch = new Branch(nome, raiz);
+    const novaBranch = new Branch(nome, new NoDiretorio("raiz", null));
     this.branchs.push(novaBranch);
     return novaBranch;
   }
@@ -81,7 +81,7 @@ export class Repositorio {
   editarRepositorio(
     novoNome: string,
     novaVisibilidade: "publico" | "privado",
-    novaDescricao?: string
+    novaDescricao?: string,
   ): void {
     this.nome = novoNome;
     this.visibilidade = novaVisibilidade;

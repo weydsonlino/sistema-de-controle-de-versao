@@ -89,7 +89,7 @@ export async function createRepo(data) {
   sistema.createRepositorio(
     newRepo.nome,
     newRepo.visibilidade,
-    newRepo.descricao
+    newRepo.descricao,
   );
   return sistema.getRepositorios();
 }
@@ -115,14 +115,14 @@ export async function search(query = "", filters = {}, page = 1, size = 10) {
     filtered = filtered.filter(
       (repo) =>
         repo.nome.toLowerCase().includes(lowerQuery) ||
-        repo.descricao.toLowerCase().includes(lowerQuery)
+        repo.descricao.toLowerCase().includes(lowerQuery),
     );
   }
 
   // Filtrar por visibilidade
   if (filters.visibilidade) {
     filtered = filtered.filter(
-      (repo) => repo.visibilidade === filters.visibilidade
+      (repo) => repo.visibilidade === filters.visibilidade,
     );
   }
 
@@ -234,4 +234,72 @@ export async function buscarArquivo(repoId, caminho) {
   const arquivo = await repo.branchPrincipal.raiz.buscarPorCaminho(caminho);
   console.log("", arquivo);
   return arquivo;
+}
+
+export async function buscarBranches(repoId) {
+  const repo = await getById(repoId);
+  const branches = repo.branchs;
+  console.log("", repo);
+  return branches;
+}
+
+export async function criarBranch(repoId, nomeBranch) {
+  const repo = await getById(repoId);
+  return repo.criarBranch(nomeBranch);
+}
+
+export async function alterarArquivoVersãoAtual(repoId, caminho, versaoId) {
+  const repo = await getById(repoId);
+  const arquivo = await repo.branchPrincipal.raiz.buscarPorCaminho(caminho);
+  arquivo.alterarVersaoAtual(versaoId);
+  return arquivo;
+}
+
+export async function criarCommit(repoId, arquivo, versao) {
+  const repo = await getById(repoId);
+  const branch = repo.branchPrincipal;
+  let commit = branch.buscarCommitEmAndamento();
+  if (commit) {
+    commit.adicionarArquivoModificado(arquivo, versao);
+    console.log("Commit existente encontrado:", commit);
+    return commit;
+  } else {
+    commit = branch.criarCommit(arquivo, versao);
+    console.log("Novo commit criado:", commit.snapshot);
+    return commit;
+  }
+}
+
+export async function realizarCommit(repoId, autor, mensagem) {
+  const repo = await getById(repoId);
+  console.log("Repositorio para commit:", repo);
+  const branch = repo.branchPrincipal;
+  const commit = branch.commits.find((c) => c.committed === false);
+  console.log("Commit a realizar:", commit);
+  if (commit) {
+    commit.realizarCommit(autor, mensagem);
+    commit.committed = true;
+    console.log("Commit realizado:", commit);
+  }
+  return commit;
+}
+
+export async function buscarCommit(repoId) {
+  const repo = await getById(repoId);
+  const branch = repo.branchPrincipal;
+
+  const commit = branch.commits.find((c) => c.committed === false);
+
+  console.log("commit apos clicar", commit);
+  return commit ?? null;
+}
+
+export async function buscarCommits(repoId) {
+  const repo = await getById(repoId);
+  const branch = repo.branchPrincipal;
+
+  const commit = branch.commits;
+  console.log("", commit);
+
+  return commit ?? null;
 }

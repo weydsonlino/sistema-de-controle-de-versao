@@ -113,6 +113,52 @@
             Descreva brevemente as alterações feitas neste arquivo
           </p>
         </div>
+        <aside class="file-versions-panel">
+          <div class="panel-header">
+            <h3>Versões</h3>
+          </div>
+
+          <LoadingSpinner
+            v-if="loadingVersions"
+            message="Carregando versões..."
+          />
+
+          <div v-else class="versions-list">
+            <div
+              v-for="(version, index) in fileVersions"
+              :key="index"
+              class="version-item"
+            >
+              <div class="version-header">
+                <code>{{ version.hash }}</code>
+                <span class="version-date">{{ version.dataHora }}</span>
+              </div>
+
+              <p class="version-message">{{ version.comentario }}</p>
+
+              <small class="version-author">
+                {{ version.atual ? "Versão atual" : "" }}
+              </small>
+
+              <div class="version-actions">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  @click="trocarVersao(version.id)"
+                >
+                  Ver
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  @click="alterarVersaoAtual(version.id)"
+                >
+                  Restaurar
+                </Button>
+              </div>
+            </div>
+          </div>
+        </aside>
       </div>
     </main>
   </div>
@@ -142,6 +188,23 @@ const fileContent = ref("");
 const commitMessage = ref("");
 const lastModified = ref();
 const file = ref();
+
+// let loadingVersions = ref(false);
+const fileVersions = ref([]);
+
+// function loadFileVersions() {
+//   loadingVersions.value = true;
+
+//   // 🔹 Mock por enquanto
+//   setTimeout(() => {
+//     fileVersions.value = repoService.buscarArquivoVersoes(
+//       Number(repoId.value),
+//       decodeURIComponent(route.params.pathMatch),
+//     );
+
+//     loadingVersions.value = false;
+//   }, 400);
+// }
 
 const lineCount = computed(() => {
   return fileContent.value.split("\n").length;
@@ -183,7 +246,7 @@ const markdownPreview = computed(() => {
   // Links
   html = html.replace(
     /\[(.*?)\]\((.*?)\)/g,
-    '<a href="$2" target="_blank">$1</a>'
+    '<a href="$2" target="_blank">$1</a>',
   );
 
   // Line breaks
@@ -201,6 +264,7 @@ const loadFile = async () => {
 
   const idNum = Number(repoId.value);
   const repo = await repoService.getById(idNum);
+  console.log(repo);
   repoName.value = repo.nome;
 
   const caminhoCodificado = route.params.pathMatch;
@@ -208,10 +272,10 @@ const loadFile = async () => {
 
   file.value = await buscarPorCaminho();
 
-  let versoes = file.value.getVersoes();
+  fileVersions.value = file.value.getVersoes();
 
-  let versaoAtual = versoes.forEach((versao) => {
-    if ((versao.atual = true)) {
+  let versaoAtual = fileVersions.value.forEach((versao) => {
+    if (versao.atual == true) {
       console.log(versao);
       fileContent.value = versao.conteudo;
       lastModified.value = file.value.ultimaModificacao;
@@ -238,6 +302,27 @@ async function buscarPorCaminho() {
   return file;
 }
 
+function trocarVersao(id) {
+  const versaoSelecionada = fileVersions.value.find(
+    (versao) => versao.id === id,
+  );
+  if (versaoSelecionada) {
+    fileContent.value = versaoSelecionada.conteudo;
+  }
+}
+
+function alterarVersaoAtual(id) {
+  fileVersions.value.forEach((versao) => {
+    if (versao.id === id) {
+      versao.atual = true;
+      repoService.criarCommit(repoId.value, file.value, versao);
+    } else {
+      versao.atual = false;
+    }
+  });
+
+  router.push(`/repos/${repoId.value}`);
+}
 const getFileIcon = (filename) => {
   return "fas fa-file";
   if (filename.endsWith(".md")) return "fas fa-file-alt";
@@ -284,11 +369,13 @@ const handleSave = () => {
     commitMessage.value,
     fileContent.value,
     "aaa",
-    file.value
+    file.value,
   );
 
   file.value.adicionarVersao(versao);
   file.value.ultimaModificacao = new Date();
+
+  repoService.criarCommit(repoId.value, file.value, versao);
 
   saving.value = false;
   router.push(`/repos/${repoId.value}`);
@@ -565,6 +652,65 @@ const handleCancel = () => {
 
   .code-editor {
     font-size: var(--font-size-xs);
+  }
+  .editor-layout {
+    display: flex;
+    gap: var(--space-4);
+  }
+
+  /* Editor ocupa mais espaço */
+  .editor-wrapper {
+    display: flex;
+    flex: 1;
+  }
+
+  /* Painel de versões */
+  .file-versions-panel {
+    width: 320px;
+    background: var(--bg-secondary);
+    border-left: 1px solid var(--border-color);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panel-header {
+    margin-bottom: var(--space-4);
+  }
+
+  .versions-list {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .version-item {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+  }
+
+  .version-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--font-size-sm);
+  }
+
+  .version-message {
+    margin: var(--space-2) 0;
+    font-weight: 500;
+  }
+
+  .version-author {
+    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+  }
+
+  .version-actions {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
   }
 }
 </style>

@@ -11,6 +11,16 @@ export class NoArquivo extends NoArvore {
     this.ultimaMudança = new Date().toISOString();
   }
 
+  alterarVersaoAtual(id: number): void {
+    for (let v of this.versao) {
+      if (v.id === id) {
+        v.mudarVersaoAtual(true);
+      } else {
+        v.mudarVersaoAtual(false);
+      }
+    }
+  }
+
   getVersoes(): Versao[] {
     return this.versao;
   }

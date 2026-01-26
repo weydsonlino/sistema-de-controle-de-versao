@@ -81,7 +81,6 @@
             { label: 'Arquivos', icon: 'fas fa-folder-tree' },
             { label: 'Commits', icon: 'fas fa-code-commit' },
             { label: 'Branches', icon: 'fas fa-code-branch' },
-            { label: 'Tags', icon: 'fas fa-tag' },
           ]"
           @tab-change="handleTabChange"
         >
@@ -112,6 +111,15 @@
                   >
                     <i class="fas fa-file-plus"></i>
                     Criar Arquivo
+                  </Button>
+                  <Button
+                    v-if="buttonShowCommitModal"
+                    size="sm"
+                    variant="primary"
+                    @click="prepararCommit()"
+                  >
+                    <i class="fas fa-file-plus"></i>
+                    Executar commit
                   </Button>
                 </div>
               </div>
@@ -265,74 +273,6 @@
               <p>Nenhuma branch encontrada</p>
             </div>
           </template>
-
-          <!-- Tab 3: Tags -->
-          <template #tab-3>
-            <div style="margin-bottom: var(--space-6)">
-              <Button variant="primary" @click="showTagModal = true">
-                <i class="fas fa-plus"></i>
-                Criar Tag
-              </Button>
-            </div>
-
-            <div v-if="loadingTags" style="padding: var(--space-8)">
-              <LoadingSpinner message="Carregando tags..." />
-            </div>
-            <div v-else-if="tags.length > 0" class="tags-grid">
-              <div v-for="tag in tags" :key="tag.nome" class="tag-card">
-                <div
-                  style="
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: start;
-                  "
-                >
-                  <div>
-                    <h4
-                      style="
-                        margin: 0 0 var(--space-2) 0;
-                        color: var(--text-primary);
-                      "
-                    >
-                      <i
-                        class="fas fa-tag"
-                        style="color: var(--color-success)"
-                      ></i>
-                      {{ tag.nome }}
-                    </h4>
-                    <p
-                      style="
-                        font-size: var(--font-size-sm);
-                        color: var(--text-secondary);
-                        margin: 0;
-                      "
-                    >
-                      Commit: <code>{{ tag.commitHash }}</code>
-                    </p>
-                    <p
-                      style="
-                        font-size: var(--font-size-sm);
-                        color: var(--text-tertiary);
-                        margin: var(--space-1) 0 0 0;
-                      "
-                    >
-                      {{ tag.autor }} • {{ tag.data }}
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    @click="handleDeleteTag(tag.nome)"
-                  >
-                    <i class="fas fa-trash"></i>
-                  </Button>
-                </div>
-              </div>
-            </div>
-            <div v-else class="empty-tab">
-              <p>Nenhuma tag encontrada</p>
-            </div>
-          </template>
         </TabPanel>
       </div>
 
@@ -398,6 +338,101 @@
           @click="handleCreateTag"
         >
           Criar Tag
+        </Button>
+      </template>
+    </Modal>
+    <!-- Execute Commit Modal -->
+    <Modal v-model="showCommitModal" title="Executar Commit" width="600px">
+      <!-- Informações do repositório -->
+      <div style="margin-bottom: var(--space-4)">
+        <p
+          style="
+            margin: 0;
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+          "
+        >
+          Repositório
+        </p>
+        <p style="margin: 0; font-weight: var(--font-weight-medium)">
+          {{ repo.nome }}
+        </p>
+      </div>
+
+      <!-- Autor -->
+      <div style="margin-bottom: var(--space-4)">
+        <p
+          style="
+            margin: 0;
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+          "
+        >
+          Autor
+        </p>
+        <p style="margin: 0; font-weight: var(--font-weight-medium)">Weydson</p>
+      </div>
+      <!-- Mensagem do commit -->
+      <FormField
+        v-model="commitMessage"
+        label="Mensagem do Commit"
+        placeholder="Descreva as alterações realizadas"
+        type="textarea"
+        rows="4"
+        required
+      />
+
+      <!-- Lista de arquivos do commit -->
+      <div style="margin-top: var(--space-4)">
+        <label
+          style="
+            display: block;
+            font-weight: var(--font-weight-medium);
+            margin-bottom: var(--space-2);
+          "
+        >
+          Arquivos incluídos no commit
+        </label>
+
+        <div
+          style="
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            background-color: var(--bg-elevated);
+          "
+        >
+          <!-- Item de arquivo -->
+          <div
+            v-for="[arquivo, versao] in arquivosDoCommit.value"
+            :key="arquivo.caminho"
+          >
+            {{ arquivo.nome }} - versão {{ versao.id }}
+          </div>
+
+          <!-- Estado vazio -->
+          <div
+            v-if="!arquivosDoCommit.value"
+            style="
+              padding: var(--space-4);
+              text-align: center;
+              color: var(--text-tertiary);
+              font-size: var(--font-size-sm);
+            "
+          >
+            Nenhum arquivo adicionado ao commit
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <template #footer>
+        <Button variant="outline" @click="showCommitModal = false">
+          Cancelar
+        </Button>
+        <Button variant="primary" @click="realizarCommit()">
+          Confirmar Commit
         </Button>
       </template>
     </Modal>
@@ -469,7 +504,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import HeaderBar from "../components/layout/HeaderBar.vue";
 import Button from "../components/common/Button.vue";
@@ -478,9 +513,6 @@ import Modal from "../components/common/Modal.vue";
 import FormField from "../components/common/FormField.vue";
 import LoadingSpinner from "../components/common/LoadingSpinner.vue";
 import * as RepoService from "../services/RepoService";
-import * as CommitService from "../services/CommitService";
-import * as BranchService from "../services/BranchService";
-import * as TagService from "../services/TagService";
 import { NoDiretorio } from "../classes/NoDiretorio";
 import { NoArquivo } from "../classes/NoArquivo";
 import { Versao } from "../classes/Versao";
@@ -492,19 +524,18 @@ const loading = ref(true);
 const loadingFiles = ref(false);
 const loadingCommits = ref(false);
 const loadingBranches = ref(false);
-const loadingTags = ref(false);
 const repo = ref(null);
 const files = ref([]);
 const currentPath = ref("");
 const commits = ref([]);
 const branches = ref([]);
-const tags = ref([]);
 
 const showBranchModal = ref(false);
 const showTagModal = ref(false);
+const showCommitModal = ref(false);
 const creatingBranch = ref(false);
 const creatingTag = ref(false);
-
+const buttonShowCommitModal = ref(false);
 const newBranch = ref({ nome: "" });
 const newTag = ref({ nome: "", commitHash: "" });
 const branchErrors = ref({});
@@ -519,6 +550,8 @@ const newFolder = ref({ name: "" });
 const newFile = ref({ name: "", content: "" });
 const folderErrors = ref({});
 const fileErrors = ref({});
+const arquivosDoCommit = ref([]);
+const commitMessage = ref("");
 
 //controll
 const atualFolder = ref(null);
@@ -545,8 +578,13 @@ const loadRepo = async () => {
 const loadCommits = async () => {
   loadingCommits.value = true;
   try {
-    const data = await CommitService.list(route.params.id);
+    const data = await RepoService.buscarCommits(route.params.id);
     commits.value = data;
+    commits.value.forEach((c) => {
+      if (c.committed == false) {
+        buttonShowCommitModal.value = true;
+      }
+    });
   } catch (error) {
     console.error("Erro ao carregar commits:", error);
   } finally {
@@ -557,7 +595,7 @@ const loadCommits = async () => {
 const loadBranches = async () => {
   loadingBranches.value = true;
   try {
-    const data = await BranchService.list(route.params.id);
+    const data = await RepoService.buscarBranches(route.params.id);
     branches.value = data;
   } catch (error) {
     console.error("Erro ao carregar branches:", error);
@@ -566,25 +604,11 @@ const loadBranches = async () => {
   }
 };
 
-const loadTags = async () => {
-  loadingTags.value = true;
-  try {
-    const data = await TagService.list(route.params.id);
-    tags.value = data;
-  } catch (error) {
-    console.error("Erro ao carregar tags:", error);
-  } finally {
-    loadingTags.value = false;
-  }
-};
-
 const handleTabChange = (index) => {
   if (index === 0 && files.value.length === 0) {
     loadFiles();
   } else if (index === 2 && branches.value.length === 0) {
     loadBranches();
-  } else if (index === 3 && tags.value.length === 0) {
-    loadTags();
   }
 };
 
@@ -623,7 +647,7 @@ const handleCreateBranch = async () => {
 
   creatingBranch.value = true;
   try {
-    await BranchService.create(route.params.id, newBranch.value.nome);
+    await RepoService.criarBranch(route.params.id, newBranch.value.nome);
     showBranchModal.value = false;
     newBranch.value = { nome: "" };
     await loadBranches();
@@ -657,7 +681,7 @@ const handleMerge = async (sourceBranch) => {
     const result = await BranchService.merge(
       route.params.id,
       sourceBranch,
-      targetBranch
+      targetBranch,
     );
     if (result.success) {
       alert(result.message);
@@ -665,52 +689,12 @@ const handleMerge = async (sourceBranch) => {
     } else {
       alert(
         `${result.message}\nArquivos com conflito:\n${result.conflicts.join(
-          "\n"
-        )}`
+          "\n",
+        )}`,
       );
     }
   } catch (error) {
     console.error("Erro ao fazer merge:", error);
-    alert(error.message);
-  }
-};
-
-const handleCreateTag = async () => {
-  tagErrors.value = {};
-
-  if (!newTag.value.nome) {
-    tagErrors.value.nome = "Nome é obrigatório";
-    return;
-  }
-
-  creatingTag.value = true;
-  try {
-    await TagService.create(
-      route.params.id,
-      newTag.value.nome,
-      newTag.value.commitHash
-    );
-    showTagModal.value = false;
-    newTag.value = { nome: "", commitHash: "" };
-    await loadTags();
-  } catch (error) {
-    console.error("Erro ao criar tag:", error);
-    tagErrors.value.nome = error.message;
-  } finally {
-    creatingTag.value = false;
-  }
-};
-
-const handleDeleteTag = async (tagName) => {
-  if (!confirm(`Tem certeza que deseja deletar a tag "${tagName}"?`)) {
-    return;
-  }
-
-  try {
-    await TagService.deleteTag(route.params.id, tagName);
-    await loadTags();
-  } catch (error) {
-    console.error("Erro ao deletar tag:", error);
     alert(error.message);
   }
 };
@@ -764,7 +748,7 @@ const getFileColor = (file) => {
 const handleFileClick = (file) => {
   if (!(file instanceof NoDiretorio)) {
     router.push(
-      `/repos/${route.params.id}/arquivo/${encodeURIComponent(file.caminho)}`
+      `/repos/${route.params.id}/arquivo/${encodeURIComponent(file.caminho)}`,
     );
   } else {
     atualFolder.value = file;
@@ -775,7 +759,7 @@ const handleFileClick = (file) => {
 const handleEditFile = (file) => {
   console.log(file.value.caminho);
   router.push(
-    `/repos/${route.params.id}/arquivo/${encodeURIComponent(file.caminho)}`
+    `/repos/${route.params.id}/arquivo/${encodeURIComponent(file.caminho)}`,
   );
 };
 
@@ -797,7 +781,7 @@ const handleDeleteFile = async (file) => {
 const handleDeleteFolder = async (folder) => {
   if (
     !confirm(
-      `Tem certeza que deseja excluir a pasta "${folder.name}"? Esta ação não pode ser desfeita.`
+      `Tem certeza que deseja excluir a pasta "${folder.name}"? Esta ação não pode ser desfeita.`,
     )
   ) {
     return;
@@ -839,7 +823,7 @@ const handleCreateFolder = async () => {
   try {
     const newFolderItem = new NoDiretorio(
       newFolder.value.name,
-      atualFolder.value
+      atualFolder.value,
     );
 
     atualFolder.value.criarFilho(newFolderItem);
@@ -900,7 +884,7 @@ const handleCreateFile = async () => {
       "Arquivo criado",
       newFile.value.content || "",
       "hash",
-      newFileItem
+      newFileItem,
     );
 
     newFileItem.adicionarVersao(fileVersion);
@@ -924,6 +908,29 @@ const handleCreateFile = async () => {
     creatingFile.value = false;
   }
 };
+
+async function prepararCommit() {
+  showCommitModal.value = true;
+
+  const commit = await RepoService.buscarCommit(route.params.id);
+
+  if (!commit) {
+    console.log("Nenhum commit em andamento");
+    return;
+  }
+
+  arquivosDoCommit.value = computed(() =>
+    Array.from(commit.snapshot.entries()),
+  );
+
+  console.log("Arquivos do commit:", arquivosDoCommit.value);
+}
+
+function realizarCommit() {
+  RepoService.realizarCommit(route.params.id, "weydson", commitMessage.value);
+  buttonShowCommitModal.value = false;
+  showCommitModal.value = false;
+}
 </script>
 
 <style scoped>
@@ -1155,6 +1162,53 @@ const handleCreateFile = async () => {
 .empty-state h3 {
   margin: var(--space-6) 0;
   color: var(--text-primary);
+}
+
+.commit-files {
+  margin-top: var(--space-4);
+}
+
+.files-label {
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+  display: block;
+}
+
+.files-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--color-gray-200);
+  border-radius: 6px;
+  padding: var(--space-2);
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-gray-100);
+  font-size: 0.9rem;
+}
+
+.file-item:last-child {
+  border-bottom: none;
+}
+
+.file-path {
+  flex: 1;
+  margin-left: var(--space-2);
+}
+
+.file-version {
+  color: var(--color-primary-500);
+  font-weight: 500;
+}
+
+.empty-files {
+  text-align: center;
+  color: var(--color-gray-400);
+  padding: var(--space-4);
 }
 
 @media (max-width: 1024px) {
